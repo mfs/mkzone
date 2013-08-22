@@ -84,6 +84,7 @@ $TTL {{ zone.ttl }}
 """
 
 def parse_args():
+    "parse application arguments"
     parser = argparse.ArgumentParser(
             description = 'bind zone file generator.',
             epilog = HELP_TEXT,
@@ -97,26 +98,38 @@ def parse_args():
     return parser.parse_args()
 
 def fields_ns(record):
+    "format an NS record"
     return ['', record['type'], record['value']]
 
 def fields_mx(record):
+    "format an MX record"
     return ['', record['type'], str(record['priority']) + '  ' + record['value']]
 
 def fields_a(record):
+    "format an A record"
     return [record[x] for x in ['host', 'type', 'value']]
 
-fields_aaaa = fields_cname = fields_a
+def fields_aaaa(record):
+    "Format an AAAA record. Same as an A record."
+    return fields_a(record)
+
+def fields_cname(record):
+    "Format a CNAME record. Same as an A record."
+    return fields_a(record)
 
 def fields_ptr(record):
+    "Format a PTR record."
     return [reverse_addr_host(record['value'], MASK), record['type'], record['host']]
 
 def reverse_addr_mask(cidr):
+    "Return the mask of cidr. IPv6 is nibbles, IPv4 is octets."
     if ':' in cidr:
         return 32 - int(cidr.split('/')[1]) // 4
     else:
         return 4 - int(cidr.split('/')[1]) // 8
 
 def reverse_addr_origin(addr, mask):
+    "Return addr as a reverse origin domain."
     if ':' in addr:
         addr = ipaddress.IPv6Address(addr).exploded.replace(':', '')[::-1]
         return '.'.join(addr[mask:]) + '.ip6.arpa.'
@@ -125,6 +138,7 @@ def reverse_addr_origin(addr, mask):
         return '.'.join(addr[mask:]) + '.in-addr.arpa.'
 
 def reverse_addr_host(addr, mask):
+    "Return addr as a reverse host record."
     if ':' in addr:
         addr = ipaddress.IPv6Address(addr).exploded.replace(':', '')[::-1]
         return '.'.join(addr[:mask])
@@ -133,6 +147,7 @@ def reverse_addr_host(addr, mask):
         return '.'.join(addr[:mask])
 
 def format_record(record):
+    "Format a DNS record by calling the matching fields_* function."
     fmt_str = '%-16s IN  %-6s %s'
     try:
         return fmt_str % tuple(globals()['fields_' + record['type'].lower()](record))
@@ -143,6 +158,7 @@ def format_record(record):
 
 
 def main():
+    "Main application function."
     args = parse_args()
     template = jinja2.Template(TEMPLATE)
 
