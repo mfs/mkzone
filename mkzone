@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+
+# Copyright 2013 Mike Sampson
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys
+import yaml
+import jinja2
+import datetime
+import argparse
+import ipaddress
+
+EXIT_CODE = 0
+MASK = 0
+
+EXAMPLE_YAML = """
+origin: example.com.
+ttl: 1h
+
+soa:
+    ns: ns.example.com.
+    user: root.example.com.
+
+records:
+    - type: NS
+      value: ns.example.com.
+
+    - type: MX
+      priority: 10
+      value: mx.example.com.
+
+    - type: A
+      host: ns
+      value: 203.0.113.1
+
+    - type: A
+      host: mx
+      value: 203.0.113.2
+
+    - type: AAAA
+      host: mx
+      value: 2001:db8::1
+
+    - type: CNAME
+      host: windmill
+      value: ns.example.com.
+"""
+
+HELP_TEXT = """
+This script generates a bind zone file from a yaml file. An example yaml file
+showing the required syntax and all supported options and record types is below:
+
+--------------------------------------8<----------------------------------------
+{0}
+-------------------------------------->8----------------------------------------
+""".format(EXAMPLE_YAML)
+
+TEMPLATE = """\
+$ORIGIN {{ zone.origin }}
+$TTL {{ zone.ttl }}
+@             IN  SOA  {{ zone.soa.ns }} {{ zone.soa.user }} (
+              {{ zone.soa.serial }} ; serial number of this zone file
+              1d             ; slave refresh (1 day)
+              2h             ; slave retry time in case of a problem (2 hours)
+              4w             ; slave expiration time (4 weeks)
+              1h             ; maximum caching time in case of failed lookups (1 hour)
+              )
+
+{% for record in zone.records -%}
+{{ record }}
+{% endfor %}
+"""
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+            description = 'bind zone file generator.',
+            epilog = HELP_TEXT,
+            formatter_class = argparse.RawTextHelpFormatter)
+    group = parser.add_mutually_exclusive_group(required = True)
+    group.add_argument('filename', nargs = '?',
+                       help = 'yaml file containing zone info')
+    group.add_argument('--example', action = 'store_true',
+                       help = 'output zone file from example yaml file')
+
+    return parser.parse_args()
+
+def fields_ns(r):
+    return ['', r['type'], r['value']]
+
+def fields_mx(r):
+    return ['', r['type'], str(r['priority']) + '  ' + r['value']]
+
+def fields_a(r):
+    return [r[x] for x in ['host', 'type', 'value']]
+
+fields_aaaa = fields_cname = fields_a
+
+def fields_ptr(r):
+    return [reverse_addr_host(r['value'], MASK), r['type'], r['host']]
+
+def reverse_addr_mask(cidr):
+    if ':' in cidr:
+        return 32 - int(cidr.split('/')[1]) // 4
+    else:
+        return 4 - int(cidr.split('/')[1]) // 8
+
+def reverse_addr_origin(addr, mask):
+    if ':' in addr:
+        addr = ipaddress.IPv6Address(addr).exploded.replace(':', '')[::-1]
+        return '.'.join(addr[mask:]) + '.ip6.arpa.'
+    else:
+        addr = addr.split('.')[::-1]
+        return '.'.join(addr[mask:]) + '.in-addr.arpa.'
+
+def reverse_addr_host(addr, mask):
+    if ':' in addr:
+        addr = ipaddress.IPv6Address(addr).exploded.replace(':', '')[::-1]
+        return '.'.join(addr[:mask])
+    else:
+        addr = addr.split('.')[::-1]
+        return '.'.join(addr[:mask])
+
+def format_record(r):
+    fmt_str = '%-16s IN  %-6s %s'
+    try:
+        return fmt_str % tuple(globals()['fields_' + r['type'].lower()](r))
+    except KeyError:
+        global EXIT_CODE
+        EXIT_CODE = 1
+        return '; error in record: ' + str(r)
+
+
+def main():
+    args = parse_args()
+    template = jinja2.Template(TEMPLATE)
+
+    if args.example:
+        zone = yaml.safe_load(EXAMPLE_YAML)
+    else:
+        f = open(args.filename)
+        zone = yaml.safe_load(f)
+    zone['soa']['serial'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+    if 'type' in zone and zone['type'] == 'reverse':
+        global MASK
+        MASK = reverse_addr_mask(zone['origin'])
+        zone['origin'] = reverse_addr_origin(zone['origin'].split('/')[0], MASK)
+
+    zone['records'] = map(format_record, zone['records'])
+
+    print(template.render(zone = zone))
+
+    sys.exit(EXIT_CODE)
+
+if __name__ == '__main__':
+    main()
