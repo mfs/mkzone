@@ -22,7 +22,6 @@ import datetime
 import argparse
 import ipaddress
 
-EXIT_CODE = 0
 MASK = 0
 
 EXAMPLE_YAML = """
@@ -152,8 +151,6 @@ def format_record(record):
     try:
         return fmt_str % tuple(globals()['fields_' + record['type'].lower()](record))
     except KeyError:
-        global EXIT_CODE
-        EXIT_CODE = 1
         return '; error in record: ' + str(record)
 
 
@@ -176,10 +173,14 @@ def main():
         zone['origin'] = reverse_addr_origin(zone['origin'].split('/')[0], MASK)
 
     zone['records'] = [format_record(x) for x in zone['records']]
+    errors = [x.startswith(';') for x in zone['records']]
+    exit_code = 0
+    if True in errors:
+        exit_code = 1
 
     print(template.render(zone = zone))
 
-    sys.exit(EXIT_CODE)
+    sys.exit(exit_code)
 
 if __name__ == '__main__':
     main()
