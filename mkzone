@@ -132,14 +132,14 @@ def reverse_addr_host(addr, mask):
         addr = addr.split('.')[::-1]
         return '.'.join(addr[:mask])
 
-def format_record(r):
+def format_record(record):
     fmt_str = '%-16s IN  %-6s %s'
     try:
-        return fmt_str % tuple(globals()['fields_' + r['type'].lower()](r))
+        return fmt_str % tuple(globals()['fields_' + record['type'].lower()](record))
     except KeyError:
         global EXIT_CODE
         EXIT_CODE = 1
-        return '; error in record: ' + str(r)
+        return '; error in record: ' + str(record)
 
 
 def main():
@@ -149,8 +149,9 @@ def main():
     if args.example:
         zone = yaml.safe_load(EXAMPLE_YAML)
     else:
-        f = open(args.filename)
-        zone = yaml.safe_load(f)
+        input_file = open(args.filename)
+        zone = yaml.safe_load(input_file)
+
     zone['soa']['serial'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
     if 'type' in zone and zone['type'] == 'reverse':
