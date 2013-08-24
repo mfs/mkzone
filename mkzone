@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""
+This script generates a bind zone file from a yaml file. An example yaml file
+showing the required syntax and all supported options and record types is below:
+
+--------------------------------------8<----------------------------------------
+{0}
+-------------------------------------->8----------------------------------------
+"""
 
 # Copyright 2013 Mike Sampson
 
@@ -55,15 +63,6 @@ records:
       value: ns.example.com.
 """
 
-HELP_TEXT = """
-This script generates a bind zone file from a yaml file. An example yaml file
-showing the required syntax and all supported options and record types is below:
-
---------------------------------------8<----------------------------------------
-{0}
--------------------------------------->8----------------------------------------
-""".format(EXAMPLE_YAML)
-
 TEMPLATE = """\
 $ORIGIN {{ zone.origin }}
 $TTL {{ zone.ttl }}
@@ -84,7 +83,7 @@ def parse_args():
     "parse application arguments"
     parser = argparse.ArgumentParser(
             description = 'bind zone file generator.',
-            epilog = HELP_TEXT,
+            epilog = __doc__.format(EXAMPLE_YAML),
             formatter_class = argparse.RawTextHelpFormatter)
     group = parser.add_mutually_exclusive_group(required = True)
     group.add_argument('filename', nargs = '?',
