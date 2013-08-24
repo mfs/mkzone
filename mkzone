@@ -107,7 +107,8 @@ class Records(object):
     @staticmethod
     def fields_mx(record):
         "format an MX record"
-        return ['', record['type'], str(record['priority']) + '  ' + record['value']]
+        return ['', record['type'],
+                str(record['priority']) + '  ' + record['value']]
 
     @staticmethod
     def fields_a(record):
@@ -127,7 +128,8 @@ class Records(object):
     @staticmethod
     def fields_ptr(record):
         "Format a PTR record."
-        return [reverse_addr_host(record['value'], Records.mask), record['type'], record['host']]
+        return [reverse_addr_host(record['value'], Records.mask),
+                record['type'], record['host']]
 
 def reverse_addr_mask(cidr):
     "Return the mask of cidr. IPv6 is nibbles, IPv4 is octets."
@@ -158,7 +160,8 @@ def format_record(record):
     "Format a DNS record by calling the matching fields_* function."
     fmt_str = '%-16s IN  %-6s %s'
     try:
-        return fmt_str % tuple(getattr(Records, 'fields_' + record['type'].lower())(record))
+        method = getattr(Records, 'fields_' + record['type'].lower())
+        return fmt_str % tuple(method(record))
     except KeyError:
         return '; error in record: ' + str(record)
 
@@ -178,7 +181,8 @@ def main():
 
     if 'type' in zone and zone['type'] == 'reverse':
         Records.mask = reverse_addr_mask(zone['origin'])
-        zone['origin'] = reverse_addr_origin(zone['origin'].split('/')[0], Records.mask)
+        addr = zone['origin'].split('/')[0]
+        zone['origin'] = reverse_addr_origin(addr, Records.mask)
 
     zone['records'] = [format_record(x) for x in zone['records']]
     errors = [x.startswith(';') for x in zone['records']]
