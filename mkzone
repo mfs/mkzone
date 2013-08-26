@@ -131,7 +131,7 @@ def main():
     input_file = open(args.filename)
     zone = yaml.safe_load(input_file)
 
-    zone['soa']['serial'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    zone['soa']['serial'] = datetime.datetime.now().strftime('%Y%m%d')
 
     if 'type' in zone and zone['type'] == 'reverse':
         Records.mask = reverse_addr_mask(zone['origin'])
