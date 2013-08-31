@@ -19,6 +19,7 @@
 import sys
 import yaml
 import jinja2
+import time
 import datetime
 import argparse
 import ipaddress
@@ -28,10 +29,10 @@ $ORIGIN {{ zone.origin }}
 $TTL {{ zone.ttl }}
 @             IN  SOA  {{ zone.soa.ns }} {{ zone.soa.user }} (
               {{ zone.soa.serial }} ; serial number of this zone file
-              1d             ; slave refresh (1 day)
-              2h             ; slave retry time in case of a problem (2 hours)
-              4w             ; slave expiration time (4 weeks)
-              1h             ; maximum caching time in case of failed lookups (1 hour)
+              1d         ; slave refresh (1 day)
+              2h         ; slave retry time in case of a problem (2 hours)
+              4w         ; slave expiration time (4 weeks)
+              1h         ; maximum caching time in case of failed lookups (1 hour)
               )
 
 {% for record in zone.records -%}
@@ -131,7 +132,7 @@ def main():
     input_file = open(args.filename)
     zone = yaml.safe_load(input_file)
 
-    zone['soa']['serial'] = datetime.datetime.now().strftime('%Y%m%d')
+    zone['soa']['serial'] = str(int(time.time()))
 
     if 'type' in zone and zone['type'] == 'reverse':
         Records.mask = reverse_addr_mask(zone['origin'])
