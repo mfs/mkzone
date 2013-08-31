@@ -1,0 +1,43 @@
+origin: example.com.
+ttl: 1h
+
+soa:
+    ns: ns.example.com.
+    user: root.example.com.
+
+records:
+    - type: NS
+      value: ns.example.com.
+
+    - type: MX
+      priority: 10
+      value: mx.example.com.
+
+    - type: A
+      host: ns
+      value: 203.0.113.1
+
+    - type: AAAA
+      host: ns
+      value: 2001:db8::1
+
+    - type: A
+      host: mx
+      value: 203.0.113.2
+
+    - type: AAAA
+      host: mx
+      value: 2001:db8::2
+
+    - type: A
+      host: '@'
+      value: 203.0.113.3
+
+    - type: AAAA
+      host: '@'
+      value: 2001:db8::3
+
+    - type: CNAME
+      host: www
+      value: example.com.
+

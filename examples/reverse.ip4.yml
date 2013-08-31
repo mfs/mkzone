@@ -1,0 +1,23 @@
+origin: 203.0.113.0/24
+ttl: 1h
+type: reverse
+
+soa:
+    ns: ns.example.com.
+    user: root.example.com.
+
+records:
+    - type: NS
+      value: ns.example.com.
+
+    - type: PTR
+      host: ns.example.com.
+      value: 203.0.113.1
+
+    - type: PTR
+      host: mx.example.com.
+      value: 203.0.113.2
+
+    - type: PTR
+      host: example.com.
+      value: 203.0.113.3
